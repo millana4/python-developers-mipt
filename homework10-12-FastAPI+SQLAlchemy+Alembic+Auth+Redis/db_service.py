@@ -3,6 +3,7 @@ from sqlalchemy import create_engine, func, and_
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError
 from models import Student, Base
+import uuid
 
 
 class DBManager:
@@ -115,29 +116,49 @@ class DBManager:
         """Загрузка данных из CSV файла"""
         try:
             with open(filename, 'r', encoding='utf-8') as file:
-                csv_reader = csv.reader(file)
+                csv_reader = csv.DictReader(file)
 
                 for row in csv_reader:
-                    if len(row) >= 5:
-                        try:
-                            grade = int(row[4].strip())
-                            student = Student(
-                                surname=row[0].strip(),
-                                name=row[1].strip(),
-                                faculty=row[2].strip(),
-                                course=row[3].strip(),
-                                grade=grade
-                            )
-                            self.session.add(student)
-                        except ValueError as e:
-                            print(f"Ошибка преобразования оценки '{row[4]}': {e}")
-                            continue
+                    try:
+                        grade = int(row['Оценка'].strip())
+                        student = Student(
+                            surname=row['Фамилия'].strip(),
+                            name=row['Имя'].strip(),
+                            faculty=row['Факультет'].strip(),
+                            course=row['Курс'].strip(),
+                            grade=grade
+                        )
+                        self.session.add(student)
+                    except ValueError as e:
+                        print(f"Ошибка преобразования оценки '{row['Оценка']}': {e}")
+                        continue
 
                 self.session.commit()
+                return f"Успешно загружено данных из {filename}"
         except FileNotFoundError:
-            print(f"Файл {filename} не найден")
+            return f"Файл {filename} не найден"
+        except Exception as e:
+            self.session.rollback()
+            return f"Ошибка загрузки: {str(e)}"
 
-    def close(self):
-        self.session.close()
+    # Удаление записей по списку UUID
+    def delete_students_by_ids(self, student_ids: list):
+        """Удаление записей по списку UUID"""
+        try:
+            # Преобразуем строки в UUID объекты
+            uuid_list = [uuid.UUID(student_id) for student_id in student_ids]
+
+            deleted_count = self.session.query(Student) \
+                .filter(Student.uuid.in_(uuid_list)) \
+                .delete(synchronize_session=False)
+
+            self.session.commit()
+            return f"Удалено {deleted_count} записей"
+        except Exception as e:
+            self.session.rollback()
+            return f"Ошибка удаления: {str(e)}"
+
+        def close(self):
+            self.session.close()
 
 
