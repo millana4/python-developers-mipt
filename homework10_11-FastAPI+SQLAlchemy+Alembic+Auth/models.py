@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, Boolean
 from base import Base, BaseModelMixin
 
 
@@ -13,3 +13,11 @@ class Student(Base, BaseModelMixin):
 
     def __repr__(self):
         return f"<Student(name='{self.name}', surname='{self.surname}')>"
+
+
+class User(Base, BaseModelMixin):
+    __tablename__ = 'users'
+
+    username = Column(String(50), unique=True, nullable=False)
+    password = Column(String(255), nullable=False)
+    is_active = Column(Boolean, default=True)
